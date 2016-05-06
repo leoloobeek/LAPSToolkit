@@ -12,7 +12,7 @@
         Will Schroeder (@harmj0y), 
         Sean Metcalf (@pyrotek3),
         Matt Graeber (@mattifestation),
-	Karl Fosaaen (@kfosaaen)
+	    Karl Fosaaen (@kfosaaen)
 
 
 #>
@@ -2542,6 +2542,8 @@ function Find-AdmPwdExtendedRights {
 
         PS C:\> Find-AdmPwdExtendedRights
         
+        Description
+        -----------
         Get users who can read the ms-Mcs-AdmPwd confidential attribute for all LAPS enabled computers
 
         Reason: Delegated
@@ -2573,8 +2575,8 @@ function Find-AdmPwdExtendedRights {
     )
     begin {
 
-        if($ComputerName) { ############################################## LAPS filter computer
-            $LAPSFilter = "$Filter(COMPUTERNAME=)"
+        if($ComputerName) { 
+            $LAPSFilter = "$Filter(dNSHostName=$ComputerName)"
         }
         else {
             $LAPSFilter = "$Filter"
