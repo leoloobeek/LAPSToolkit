@@ -2570,6 +2570,7 @@ function Find-AdmPwdExtendedRights {
         Only retrieves ExtendedRights for the computer specified
 
     .LINK
+
         https://adsecurity.org/?p=1790
         https://blogs.msdn.microsoft.com/laps/2015/07/17/laps-and-permission-to-join-computer-to-domain/
         http://www.harmj0y.net/blog/redteaming/abusing-gpo-permissions/
@@ -2662,17 +2663,17 @@ function Find-LAPSDelegatedGroups {
         The PageSize to set for the LDAP searcher object.
 
     .EXAMPLE
+
         PS C:\> Find-LAPSDelegatedGroups
         
         Description
         -----------
         Retrieves the groups delegated to read the ms-Mcs-AdmPwd for each OU
 
-
     .LINK
+
         http://www.harmj0y.net/blog/powershell/running-laps-with-powerview/
         https://adsecurity.org/?p=1790
-
 #>
     [CmdletBinding()]
     param(
@@ -2711,18 +2712,68 @@ function Get-LAPSComputers {
 <#
     .SYNOPSIS
 
-    .PARAMETER LDAP
+        Retrieves all computers with LAPS enabled. Passwords for the
+        accounts are displayed if the user has access to view the
+        ms-Mcs-AdmPwd attribute. 
+
+        Similar to @kfosaaen's Get-LAPSPasswords but leverages @harmj0y's
+        PowerView functions and can be used to find computers with LAPS
+        enabled even if user does not have permissions to view password.
+
+        Note: Parameters are taken from Get-NetComputer as this function
+        is essentially a wrapper around it.
+
+    .PARAMETER ComputerName
+
+        Return computers with a specific name, wildcards accepted.
+
+    .PARAMETER SPN
+
+        Return computers with a specific service principal name, wildcards accepted.
+
+    .PARAMETER Domain
+
+        The domain to query for computers, defaults to the current domain.
 
     .PARAMETER DomainController
 
-    .PARAMETER Filter
+        Domain controller to reflect LDAP queries through.
+
+    .PARAMETER ADSpath
+
+        The LDAP source to search through, e.g. "LDAP://OU=secret,DC=testlab,DC=local"
+        Useful for OU queries.
+    
+    .PARAMETER SiteName
+
+        The AD Site name to search for computers.
+
+    .PARAMETER Unconstrained
+
+        Switch. Return computer objects that have unconstrained delegation.
 
     .PARAMETER PageSize
 
+        The PageSize to set for the LDAP searcher object.
+
+    .PARAMETER Credential
+
+        A [Management.Automation.PSCredential] object of alternate credentials
+        for connection to the target domain.
+
     .EXAMPLE
 
+        PS C:\> Get-LAPSComputers
+        
+        Description
+        -----------
+        Retreives all computer objects from domain with LAPS enabled and displays
+        the time the password expires and the password if the user has read access.
+
     .LINK
-	https://github.com/kfosaaen/Get-LAPSPasswords
+    
+	   https://github.com/kfosaaen/Get-LAPSPasswords
+       https://blog.netspi.com/running-laps-around-cleartext-passwords/
 #>
     [CmdletBinding()]
     Param (
@@ -2733,21 +2784,6 @@ function Get-LAPSComputers {
 
         [String]
         $SPN,
-
-        [String]
-        $OperatingSystem,
-
-        [String]
-        $ServicePack,
-
-        [Switch]
-        $Printers,
-
-        [Switch]
-        $Ping,
-
-        [Switch]
-        $FullData,
 
         [String]
         $Domain,
@@ -2771,29 +2807,30 @@ function Get-LAPSComputers {
         [Management.Automation.PSCredential]
         $Credential
     )
+    process {
+        $AdmPwdComputers = @()
+        Get-NetComputer -FullData -Filter "(ms-mcs-admpwdexpirationtime=*)" @PSBoundParameters | ForEach-Object {
 
-    $AdmPwdComputers = @()
-    Get-NetComputer -FullData -Filter "(ms-mcs-admpwdexpirationtime=*)" @PSBoundParameters | ForEach-Object {
+            $HostName = $_.dnshostname
+            $Password = $_."ms-mcs-admpwd"
 
-        $HostName = $_.dnshostname
-        $Password = $_."ms-mcs-admpwd"
+            # epoch conversion code taken directly from https://github.com/kfosaaen/Get-LAPSPasswords/blob/master/Get-LAPSPasswords.ps1
+            If ($_."ms-MCS-AdmPwdExpirationTime" -ge 0) {
+                $CurrentExpiration = $([datetime]::FromFileTime([convert]::ToInt64($_."ms-MCS-AdmPwdExpirationTime",10)))
+            }
+            Else{
+                $CurrentExpiration = "N/A"
+            }
 
-        # epoch conversion code taken directly from https://github.com/kfosaaen/Get-LAPSPasswords/blob/master/Get-LAPSPasswords.ps1
-        If ($_."ms-MCS-AdmPwdExpirationTime" -ge 0) {
-            $CurrentExpiration = $([datetime]::FromFileTime([convert]::ToInt64($_."ms-MCS-AdmPwdExpirationTime",10)))
+            $Computer = New-Object PSObject
+            $Computer | Add-Member NoteProperty 'ComputerName' "$HostName"
+            $Computer | Add-Member Noteproperty 'Password' "$Password"
+            $Computer | Add-Member Noteproperty 'Expiration' "$CurrentExpiration"
+            $AdmPwdComputers += $Computer        
+
         }
-        Else{
-            $CurrentExpiration = "NA"
-        }
 
-        $Computer = New-Object PSObject
-        $Computer | Add-Member NoteProperty 'ComputerName' "$HostName"
-        $Computer | Add-Member Noteproperty 'Password' "$Password"
-        $Computer | Add-Member Noteproperty 'Expiration' "$CurrentExpiration"
-        $AdmPwdComputers += $Computer        
-
+        $AdmPwdComputers | Format-Table -AutoSize
     }
-
-    $AdmPwdComputers | Format-Table -AutoSize
 
 }
