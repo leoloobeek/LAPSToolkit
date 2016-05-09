@@ -1246,18 +1246,25 @@ function Get-ObjectAcl {
         
         Get the ACLs for the matt.admin user in the testlab.local domain and
         resolve relevant GUIDs to their display names.
+
+    .EXAMPLE
+
+        PS C:\> Get-NetOU -FullData | Get-ObjectAcl -ResolveGUIDs
+
+        Enumerate the ACL permissions for all OUs in the domain.
 #>
 
     [CmdletBinding()]
     Param (
-        [Parameter(ValueFromPipeline=$True)]
+        [Parameter(ValueFromPipelineByPropertyName=$True)]
         [String]
         $SamAccountName,
 
+        [Parameter(ValueFromPipelineByPropertyName=$True)]
         [String]
         $Name = "*",
 
-        [Alias('DN')]
+        [Parameter(ValueFromPipelineByPropertyName=$True)]
         [String]
         $DistinguishedName = "*",
 
@@ -1309,7 +1316,8 @@ function Get-ObjectAcl {
             }
   
             try {
-                $Searcher.FindAll() | Where-Object {$_} | ForEach-Object {
+                $Results = $Searcher.FindAll()
+                $Results | Where-Object {$_} | ForEach-Object {
                     $Object = [adsi]($_.path)
 
                     if($Object.distinguishedname) {
@@ -1361,6 +1369,8 @@ function Get-ObjectAcl {
                     }
                     else { $_ }
                 }
+                $Results.dispose()
+                $Searcher.dispose()
             }
             catch {
                 Write-Warning $_
@@ -2548,11 +2558,21 @@ function Find-AdmPwdExtendedRights {
 
         Reason: Delegated
             System admin delegated this group to view the password
-        Reason: Other
+        Reason: All
             This user/group has all extended rights permission and can view the password
 
+    .EXAMPLE
+
+        PS C:\> Find-AdmPwdExtendedRights -ComputerName victim1.testlab.local
+        
+        Description
+        -----------
+        Only retrieves ExtendedRights for the computer specified
+
     .LINK
-        http://blog.harmj0y.net/
+        https://adsecurity.org/?p=1790
+        https://blogs.msdn.microsoft.com/laps/2015/07/17/laps-and-permission-to-join-computer-to-domain/
+        http://www.harmj0y.net/blog/redteaming/abusing-gpo-permissions/
 #>
     [CmdletBinding()]
     param(
@@ -2637,18 +2657,22 @@ function Find-LAPSDelegatedGroups {
 
         Domain controller to reflect LDAP queries through.
 
-    .PARAMETER LDAP
-
-    .PARAMETER DomainController
-
-    .PARAMETER Filter
-
     .PARAMETER PageSize
 
+        The PageSize to set for the LDAP searcher object.
+
     .EXAMPLE
+        PS C:\> Find-LAPSDelegatedGroups
+        
+        Description
+        -----------
+        Retrieves the groups delegated to read the ms-Mcs-AdmPwd for each OU
+
 
     .LINK
-        http://blog.harmj0y.net/
+        http://www.harmj0y.net/blog/powershell/running-laps-with-powerview/
+        https://adsecurity.org/?p=1790
+
 #>
     [CmdletBinding()]
     param(
@@ -2665,19 +2689,18 @@ function Find-LAPSDelegatedGroups {
     )
 
     $DelegatedGroups = @()
-    Get-NetOU -FullData | Select-Object -Property "distinguishedname" | ForEach-Object { 
 
-        #TODO: filter out OUs with only computer objects
-
-
-        Get-ObjectAcl -ResolveGUIDs -ADSpath $_.distinguishedname | ForEach-Object {
-            if($_.ActiveDirectoryRights -match "ExtendedRight" -and $_.ObjectType -match "ms-Mcs-AdmPwd") {
-                $DelegatedGroup = New-Object PSObject
-                $DelegatedGroup | Add-Member NoteProperty 'OrgUnit' "$dn"
-                $DelegatedGroup | Add-Member Noteproperty 'ExtendedRightHolders' "$_.IdentityReference"
-                $DelegatedGroups += $DelegatedGroup
-            }
-        }
+    # Next few lines taken from http://www.harmj0y.net/blog/powershell/running-laps-with-powerview/
+    Get-NetOU -FullData | Get-ObjectAcl -ResolveGUIDs | Where-Object {
+        ($_.ObjectType -like 'ms-Mcs-AdmPwd') -and 
+        ($_.ActiveDirectoryRights -match 'ReadProperty')
+    } | ForEach-Object {
+        $dn = $_.ObjectDN
+        $ir = $_.IdentityReference
+        $DelegatedGroup = New-Object PSObject
+        $DelegatedGroup | Add-Member NoteProperty 'OrgUnit' "$dn"
+        $DelegatedGroup | Add-Member Noteproperty 'Delegated Groups' "$ir"
+        $DelegatedGroups += $DelegatedGroup
     }
 
     $DelegatedGroups | Format-Table -AutoSize
