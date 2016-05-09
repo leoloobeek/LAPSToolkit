@@ -2618,7 +2618,7 @@ function Find-AdmPwdExtendedRights {
                 $Reason = "Delegated"
             } 
             elseif($_.ObjectType -match "All" -and $_.IdentityReference -notmatch "BUILTIN") {
-                $Reason = "Other"
+                $Reason = "All"
             }
             else { return }
 
