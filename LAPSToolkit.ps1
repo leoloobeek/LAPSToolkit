@@ -2630,12 +2630,15 @@ function Find-AdmPwdExtendedRights {
         }
 
         $ExtendedRights = Get-ObjectAcl -ResolveGUIDs -Filter $LAPSFilter -Domain $Domain -DomainController $DomainController -Credential $Credential -PageSize $PageSize | Where-Object { $_.ActiveDirectoryRights -match "ExtendedRight" }
+        # Get all computers objects once to reference below
+        $ComputerObjects = Get-NetComputer -Filter "(ms-mcs-admpwdexpirationtime=*)" -FullData -Domain $Domain -DomainController $DomainController -Credential $Credential
     }
     process {
 
         $ExtendedRights | ForEach-Object {
-
-            $ComputerName = Get-NetComputer -Domain $Domain -DomainController $DomainController -Credential $Credential -ADSpath $_.ObjectDN
+            $dn = $_.ObjectDN
+            $ComputerName =  $ComputerObjects | Where-Object { $_.distinguishedname -match $dn } | Select-Object dnshostname -ExpandProperty dnshostname
+            Write-Verbose "Adding data for $ComputerName"
             $Identity = $_.IdentityReference
 
             if($_.ObjectType -match "ms-Mcs-AdmPwd") {
