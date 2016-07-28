@@ -2607,8 +2607,6 @@ function Find-AdmPwdExtendedRights {
     }
     process {
 
-        $AuthorizedUsers = @()
-
         $ExtendedRights | ForEach-Object {
 
             $ComputerName = Get-NetComputer -ADSpath $_.ObjectDN
@@ -2626,12 +2624,9 @@ function Find-AdmPwdExtendedRights {
             $ExtendedRightUser | Add-Member Noteproperty 'ComputerName' "$ComputerName"
             $ExtendedRightUser | Add-Member Noteproperty 'Identity' "$Identity"
             $ExtendedRightUser | Add-Member Noteproperty 'Reason' "$Reason"
-            $AuthorizedUsers += $ExtendedRightUser
+            $ExtendedRightUser
 
-        }
-
-        $AuthorizedUsers | Sort-Object -Property "ComputerName" | Format-Table -Property ComputerName,Identity,Reason
-        
+        } 
     }
 }
 
@@ -2689,8 +2684,6 @@ function Find-LAPSDelegatedGroups {
         $PageSize = 200
     )
 
-    $DelegatedGroups = @()
-
     # Next few lines taken from http://www.harmj0y.net/blog/powershell/running-laps-with-powerview/
     Get-NetOU -FullData | Get-ObjectAcl -ResolveGUIDs | Where-Object {
         ($_.ObjectType -like 'ms-Mcs-AdmPwd') -and 
@@ -2701,10 +2694,8 @@ function Find-LAPSDelegatedGroups {
         $DelegatedGroup = New-Object PSObject
         $DelegatedGroup | Add-Member NoteProperty 'OrgUnit' "$dn"
         $DelegatedGroup | Add-Member Noteproperty 'Delegated Groups' "$ir"
-        $DelegatedGroups += $DelegatedGroup
+        $DelegatedGroup
     }
-
-    $DelegatedGroups | Format-Table -AutoSize
 }
 
 
@@ -2808,7 +2799,7 @@ function Get-LAPSComputers {
         $Credential
     )
     process {
-        $AdmPwdComputers = @()
+
         Get-NetComputer -FullData -Filter "(ms-mcs-admpwdexpirationtime=*)" @PSBoundParameters | ForEach-Object {
 
             $HostName = $_.dnshostname
@@ -2826,11 +2817,9 @@ function Get-LAPSComputers {
             $Computer | Add-Member NoteProperty 'ComputerName' "$HostName"
             $Computer | Add-Member Noteproperty 'Password' "$Password"
             $Computer | Add-Member Noteproperty 'Expiration' "$CurrentExpiration"
-            $AdmPwdComputers += $Computer        
+            $Computer        
 
         }
-
-        $AdmPwdComputers | Format-Table -AutoSize
     }
 
 }
