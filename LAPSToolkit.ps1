@@ -1234,6 +1234,11 @@ function Get-ObjectAcl {
 
         The PageSize to set for the LDAP searcher object.
 
+    .PARAMETER Credential
+
+        A [Management.Automation.PSCredential] object of alternate credentials
+        for connection to the target domain.
+
     .EXAMPLE
 
         PS C:\> Get-ObjectAcl -SamAccountName matt.admin -domain testlab.local
@@ -1292,15 +1297,18 @@ function Get-ObjectAcl {
 
         [ValidateRange(1,10000)] 
         [Int]
-        $PageSize = 200
+        $PageSize = 200,
+
+        [Management.Automation.PSCredential]
+        $Credential
     )
 
     begin {
-        $Searcher = Get-DomainSearcher -Domain $Domain -DomainController $DomainController -ADSpath $ADSpath -ADSprefix $ADSprefix -PageSize $PageSize 
+        $Searcher = Get-DomainSearcher -Domain $Domain -DomainController $DomainController -ADSpath $ADSpath -ADSprefix $ADSprefix -PageSize $PageSize -Credential $Credential
 
         # get a GUID -> name mapping
         if($ResolveGUIDs) {
-            $GUIDs = Get-GUIDMap -Domain $Domain -DomainController $DomainController -PageSize $PageSize
+            $GUIDs = Get-GUIDMap -Domain $Domain -DomainController $DomainController -PageSize $PageSize -Credential $Credential
         }
     }
 
@@ -1317,9 +1325,16 @@ function Get-ObjectAcl {
   
             try {
                 $Results = $Searcher.FindAll()
+                
                 $Results | Where-Object {$_} | ForEach-Object {
-                    $Object = [adsi]($_.path)
-
+                    if($Credential) {
+                        # taken from http://www.lazywinadmin.com/2013/10/powershell-using-adsi-with-alternate.html
+                        $Object = New-Object -TypeName System.DirectoryServices.DirectoryEntry -ArgumentList $_.path, $($Credential.UserName),$($Credential.GetNetworkCredential().password)
+                    }
+                    else {
+                        $Object = [adsi]($_.path)
+                    }
+                    
                     if($Object.distinguishedname) {
                         $Access = $Object.PsBase.ObjectSecurity.access
                         $Access | ForEach-Object {
@@ -1642,14 +1657,17 @@ filter Get-GUIDMap {
 
         [ValidateRange(1,10000)] 
         [Int]
-        $PageSize = 200
+        $PageSize = 200,
+        
+        [Management.Automation.PSCredential]
+        $Credential
     )
 
     $GUIDs = @{'00000000-0000-0000-0000-000000000000' = 'All'}
 
-    $SchemaPath = (Get-NetForest).schema.name
+    $SchemaPath = (Get-NetForest -Credential $Credential).schema.name
 
-    $SchemaSearcher = Get-DomainSearcher -ADSpath $SchemaPath -DomainController $DomainController -PageSize $PageSize
+    $SchemaSearcher = Get-DomainSearcher -ADSpath $SchemaPath -Domain $Domain -DomainController $DomainController -PageSize $PageSize -Credential $Credential
     if($SchemaSearcher) {
         $SchemaSearcher.filter = "(schemaIDGUID=*)"
         try {
@@ -1663,7 +1681,7 @@ filter Get-GUIDMap {
         }
     }
 
-    $RightsSearcher = Get-DomainSearcher -ADSpath $SchemaPath.replace("Schema","Extended-Rights") -DomainController $DomainController -PageSize $PageSize -Credential $Credential
+    $RightsSearcher = Get-DomainSearcher -ADSpath $SchemaPath.replace("Schema","Extended-Rights") -Domain $Domain -DomainController $DomainController -PageSize $PageSize -Credential $Credential
     if ($RightsSearcher) {
         $RightsSearcher.filter = "(objectClass=controlAccessRight)"
         try {
