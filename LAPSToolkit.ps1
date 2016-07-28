@@ -1328,8 +1328,7 @@ function Get-ObjectAcl {
                 
                 $Results | Where-Object {$_} | ForEach-Object {
                     if($Credential) {
-                        # taken from http://www.lazywinadmin.com/2013/10/powershell-using-adsi-with-alternate.html
-                        $Object = New-Object -TypeName System.DirectoryServices.DirectoryEntry -ArgumentList $_.path, $($Credential.UserName),$($Credential.GetNetworkCredential().password)
+                        $Object = New-Object -TypeName System.DirectoryServices.DirectoryEntry($_.path, $($Credential.UserName),$($Credential.GetNetworkCredential().password))
                     }
                     else {
                         $Object = [adsi]($_.path)
