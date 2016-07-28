@@ -2609,7 +2609,7 @@ function Find-AdmPwdExtendedRights {
 
         $ExtendedRights | ForEach-Object {
 
-            $ComputerName = Get-NetComputer -ADSpath $_.ObjectDN
+            $ComputerName = Get-NetComputer -Domain $Domain -DomainController $DomainController -ADSpath $_.ObjectDN
             $Identity = $_.IdentityReference
 
             if($_.ObjectType -match "ms-Mcs-AdmPwd") {
@@ -2685,7 +2685,7 @@ function Find-LAPSDelegatedGroups {
     )
 
     # Next few lines taken from http://www.harmj0y.net/blog/powershell/running-laps-with-powerview/
-    Get-NetOU -FullData | Get-ObjectAcl -ResolveGUIDs | Where-Object {
+    Get-NetOU -Domain $Domain -DomainController $DomainController -FullData | Get-ObjectAcl -Domain $Domain -DomainController $DomainController -ResolveGUIDs | Where-Object {
         ($_.ObjectType -like 'ms-Mcs-AdmPwd') -and 
         ($_.ActiveDirectoryRights -match 'ReadProperty')
     } | ForEach-Object {
