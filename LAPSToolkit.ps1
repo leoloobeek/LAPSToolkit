@@ -2548,6 +2548,11 @@ function Find-AdmPwdExtendedRights {
 
         The PageSize to set for the LDAP searcher object.
 
+    .PARAMETER Credential
+
+        A [Management.Automation.PSCredential] object of alternate credentials
+        for connection to the target domain.
+
     .EXAMPLE
 
         PS C:\> Find-AdmPwdExtendedRights
@@ -2592,7 +2597,11 @@ function Find-AdmPwdExtendedRights {
 
         [ValidateRange(1,10000)]
         [Int]
-        $PageSize = 200
+        $PageSize = 200,
+
+        [Management.Automation.PSCredential]
+        $Credential
+
     )
     begin {
 
@@ -2603,13 +2612,13 @@ function Find-AdmPwdExtendedRights {
             $LAPSFilter = "$Filter"
         }
 
-        $ExtendedRights = Get-ObjectAcl -ResolveGUIDs -Filter $LAPSFilter -Domain $Domain -DomainController $DomainController -PageSize $PageSize | Where-Object { $_.ActiveDirectoryRights -match "ExtendedRight" }
+        $ExtendedRights = Get-ObjectAcl -ResolveGUIDs -Filter $LAPSFilter -Domain $Domain -DomainController $DomainController -Credential $Credential -PageSize $PageSize | Where-Object { $_.ActiveDirectoryRights -match "ExtendedRight" }
     }
     process {
 
         $ExtendedRights | ForEach-Object {
 
-            $ComputerName = Get-NetComputer -Domain $Domain -DomainController $DomainController -ADSpath $_.ObjectDN
+            $ComputerName = Get-NetComputer -Domain $Domain -DomainController $DomainController -Credential $Credential -ADSpath $_.ObjectDN
             $Identity = $_.IdentityReference
 
             if($_.ObjectType -match "ms-Mcs-AdmPwd") {
@@ -2657,6 +2666,11 @@ function Find-LAPSDelegatedGroups {
 
         The PageSize to set for the LDAP searcher object.
 
+    .PARAMETER Credential
+
+        A [Management.Automation.PSCredential] object of alternate credentials
+        for connection to the target domain.
+
     .EXAMPLE
 
         PS C:\> Find-LAPSDelegatedGroups
@@ -2681,11 +2695,16 @@ function Find-LAPSDelegatedGroups {
 
         [ValidateRange(1,10000)]
         [Int]
-        $PageSize = 200
+        $PageSize = 200,
+
+        [Management.Automation.PSCredential]
+        $Credential
+
     )
 
     # Next few lines taken from http://www.harmj0y.net/blog/powershell/running-laps-with-powerview/
-    Get-NetOU -Domain $Domain -DomainController $DomainController -FullData | Get-ObjectAcl -Domain $Domain -DomainController $DomainController -ResolveGUIDs | Where-Object {
+    Get-NetOU -Domain $Domain -DomainController $DomainController -Credential $Credential -FullData |
+     Get-ObjectAcl -Domain $Domain -DomainController $DomainController -Credential $Credential -ResolveGUIDs | Where-Object {
         ($_.ObjectType -like 'ms-Mcs-AdmPwd') -and 
         ($_.ActiveDirectoryRights -match 'ReadProperty')
     } | ForEach-Object {
