@@ -2817,7 +2817,7 @@ function Find-AdmPwdExtendedRights {
 
             $ComputerName =  $CompMap[$_.ObjectDN]
             Write-Verbose "Parsing ACLs for $ComputerName"
-            $ir = $_.IdentityReference
+            $Identity = $_.IdentityReference
 
             if($_.ObjectType -match "ms-Mcs-AdmPwd") {
                 $Reason = "Delegated"
@@ -2828,10 +2828,7 @@ function Find-AdmPwdExtendedRights {
             else { return }
 
             if($Credential) {
-                $Identity = $SIDMap[$ir.ToString()]
-            }
-            else { 
-                $Identity = $ir 
+                $Identity = $SIDMap[$Identity.ToString()]
             }
 
             $ExtendedRightUser = New-Object PSObject
