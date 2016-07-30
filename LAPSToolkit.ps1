@@ -2719,6 +2719,10 @@ function Find-AdmPwdExtendedRights {
 
         Filter to apply to LDAP queries, defaults to all computers with LAPS enabled.
 
+    .PARAMETER ExcludeDelegated
+
+        Switch. Only show users with "All Extended Rights". Default False.
+
     .PARAMETER PageSize
 
         The PageSize to set for the LDAP searcher object.
@@ -2780,6 +2784,9 @@ function Find-AdmPwdExtendedRights {
         [String]
         $Filter = "(objectCategory=Computer)(ms-mcs-admpwdexpirationtime=*)",
 
+        [Switch]
+        $ExcludeDelegated,
+
         [ValidateRange(1,10000)]
         [Int]
         $PageSize = 200,
@@ -2820,7 +2827,7 @@ function Find-AdmPwdExtendedRights {
             Write-Verbose "Parsing ACLs for $ComputerName"
             $Identity = $_.IdentityReference
 
-            if($_.ObjectType -match "ms-Mcs-AdmPwd") {
+            if($_.ObjectType -match "ms-Mcs-AdmPwd" -and !($ExcludeDelegated)) {
                 $Reason = "Delegated"
             } 
             elseif($_.ObjectType -match "All" -and $_.IdentityReference -notmatch "BUILTIN") {
