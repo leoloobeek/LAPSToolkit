@@ -4,7 +4,7 @@
 
     LAPSToolkit
 
-    Requires functions from PowerView
+    Uses many functions from PowerView
     URL: https://github.com/PowerShellMafia/PowerSploit/blob/master/Recon/PowerView.ps1
     Author: Will Schroeder (@harmj0y)
 
@@ -2757,7 +2757,7 @@ function Find-AdmPwdExtendedRights {
         
         Description
         -----------
-        Only retrieves ExtendedRights for the computer specified
+        Retrieve LAPS ACL information from computer not connected to testlab.local domain.
 
     .LINK
 
@@ -2800,11 +2800,12 @@ function Find-AdmPwdExtendedRights {
         Write-Verbose "Retrieving all ExtendedRight ACLs for domain $Domain"
         $ExtendedRights = Get-ObjectAcl -ResolveGUIDs -Filter $LAPSFilter -Domain $Domain -DomainController $DomainController -Credential $Credential -PageSize $PageSize | Where-Object { $_.ActiveDirectoryRights -match "ExtendedRight" }
         
-        # Get all computers objects once, then reference below
+        # Build a hash table of DN and hostnames
         $CompMap = @{}
         $ComputerObjects = Get-NetComputer -Filter "(ms-mcs-admpwdexpirationtime=*)" -FullData -Domain $Domain -DomainController $DomainController -Credential $Credential | ForEach-Object { $CompMap.Add($_.distinguishedname, $_.dnshostname) }
 
         if($Credential){
+            # Build a hash table of SIDs and user/group
             Write-Verbose "Retrieving all users and groups to resolve SIDs when using PSCredential"
             $SIDMap = @{}
             Get-NetUser -Domain $Domain -DomainController $DomainController -Credential $Credential | ForEach-Object { $SIDMap.Add($_.objectsid, $_.samaccountname) }
@@ -2827,6 +2828,7 @@ function Find-AdmPwdExtendedRights {
             }
             else { return }
 
+            # Map the SID to user/group if not on domain
             if($Credential) {
                 if($SIDMap.Contains($Identity.ToString())) {
                     $Identity = $SIDMap[$Identity.ToString()]
