@@ -2828,7 +2828,9 @@ function Find-AdmPwdExtendedRights {
             else { return }
 
             if($Credential) {
-                $Identity = $SIDMap[$Identity.ToString()]
+                if($SIDMap.Contains($Identity.ToString())) {
+                    $Identity = $SIDMap[$Identity.ToString()]
+                }
             }
 
             $ExtendedRightUser = New-Object PSObject
