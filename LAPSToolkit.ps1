@@ -1024,10 +1024,16 @@ filter Get-NetForest {
 
     if($ForestObject) {
         # get the SID of the forest root
-        $ForestSid = (New-Object System.Security.Principal.NTAccount($ForestObject.RootDomain,"krbtgt")).Translate([System.Security.Principal.SecurityIdentifier]).Value
-        $Parts = $ForestSid -Split "-"
-        $ForestSid = $Parts[0..$($Parts.length-2)] -join "-"
-        $ForestObject | Add-Member NoteProperty 'RootDomainSid' $ForestSid
+        try {
+            $ForestSid = (New-Object System.Security.Principal.NTAccount($ForestObject.RootDomain,"krbtgt")).Translate([System.Security.Principal.SecurityIdentifier]).Value
+            $Parts = $ForestSid -Split "-"
+            $ForestSid = $Parts[0..$($Parts.length-2)] -join "-"
+            $ForestObject | Add-Member NoteProperty 'RootDomainSid' $ForestSid
+        }
+        catch {
+            Write-Verbose "Couldn't translate SID for Forest"
+            $ForestSid = ""
+        }
         $ForestObject
     }
 }
@@ -2870,6 +2876,8 @@ function Find-LAPSDelegatedGroups {
         A [Management.Automation.PSCredential] object of alternate credentials
         for connection to the target domain.
 
+        NOTE: You must use FQDN of domain: testlab.local\user, not testlab\user
+
     .EXAMPLE
 
         PS C:\> Find-LAPSDelegatedGroups
@@ -2969,6 +2977,8 @@ function Get-LAPSComputers {
 
         A [Management.Automation.PSCredential] object of alternate credentials
         for connection to the target domain.
+
+        NOTE: You must use FQDN of domain: testlab.local\user, not testlab\user
 
     .EXAMPLE
 
