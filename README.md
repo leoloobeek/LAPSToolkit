@@ -1,6 +1,8 @@
 # LAPSToolkit
 Functions written in PowerShell that leverage PowerView to audit and attack Active Directory environments that have deployed Microsoft's Local Administrator Password Solution (LAPS). It includes finding groups specifically delegated by sysadmins, finding users with "All Extended Rights" that can view passwords, and viewing all computers with LAPS enabled.
 
+This is still an early version and hasn't had a lot of testing in enterprise networks. Please submit issues or comments for any issues or performance improvements.
+
 For more information on how LAPS works see https://adsecurity.org/?p=1790.
 
 #### Get-LAPSComputers:
